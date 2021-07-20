@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  janusgraph:
+    image: janusgraph/janusgraph:0.5.3
+    ports:
+      - '8182:8182'
+      - '8184:8184'
+    networks:
+      - janusgraph
+    depends_on:
+      - scylla
+    restart: always
+    container_name: janusgraph
+    volumes:
+      # bind mounts for configs; use read only so not overridden by environment variables
+      - './janusgraph:/etc/opt/janusgraph/'
+    healthcheck:
+      test: ['CMD', 'bin/gremlin.sh', '-e', 'scripts/remote-connect.groovy']
+      interval: 10s
+      timeout: 30s
+      retries: 3
+
+  scylla:
+    image: scylladb/scylla:4.4.3
+    ports:
+      # REST API
+      - '10000:10000'
+      # CQL ports (native_transport_port)
+      - '9042:9042'
+      # Thrift (rpc_port)
+      - '9160:9160'
+      # Internode
+      - '7000:7000'
+      - '7001:7001'
+      # JMX
+      - '7199:7199'
+      # Prometheus monitoring
+      - '9180:9180'
+      - '9100:9100'
+    networks:
+      - janusgraph
+    volumes:
+      - ./data/scylla/data:/var/lib/db
+
+networks:
+  janusgraph:
